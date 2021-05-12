@@ -11,12 +11,8 @@ var running = false; //Check for current game
 var state = 'open'; //state can be open, starting, event
 var playerNum = 0; //number of characters for bookkeeping
 const prefix = '>'; //what the current messaging prefix is
-//Could probably crunch this down into one value via a struct.
-var characters = [''];
-var players = [''];
-var hp = [];
-var will = [];
-
+//This is a holder for all the character data using a struct. characters.push({id: playerNum, name: args[0], hp:  parseInt(args[1]), will: parseInt(args[2]), player: message.author, inventory: ''})
+var characters = [];
 var currentRoom = 0; //The index number of the current room in the roomList
 var exitRoom;
 var entranceRoom;
@@ -40,14 +36,14 @@ client.on('message', message => {
     const command = args.shift().toLowerCase();
     
     if (command === 'help') {
-        message.channel.send('use !list for a list of commands. Remind the creator to add more to this.');
+        message.channel.send('use ' + prefix + 'list for a list of commands. Remind the creator to add more to this.');
 
     }
     //provides a list of commands
     if (command === 'list') {
-        message.channel.send('At all times: !help, !start, !summary, !end. while state is open: !visualize, !visualize events.' +
-        ' !north or up or n, east or right or e, south or down or s, west or left or w all to navigate the maze. !start, While starting: !finish, !add. ' +
-        'during events: !success, !failure, !ignore, !done');
+        message.channel.send('At all times: ' + prefix + ' help, ' + prefix + 'start, ' + prefix + 'summary, ' + prefix + 'end. while state is open: ' + prefix + 'map, ' + prefix + 'map events.' +
+        ' ' + prefix + 'north or up or n, east or right or e, south or down or s, west or left or w all to navigate the maze. ' + prefix + 'start, While starting: ' + prefix + 'finish, ' + prefix + 'add. ' +
+        'during events: ' + prefix + 'success, ' + prefix + 'failure, ' + prefix + 'ignore, ' + prefix + 'done');
 
     }
     //Assistant function to allow user to check the current state and game objects
@@ -55,9 +51,9 @@ client.on('message', message => {
         message.channel.send('state: ' + state + '\n' + 'number of characters: ' + playerNum);
         if (playerNum > 0) {
             message.channel.send('characters: ');
-            var temp;
+            var temp = '';
             for (i = 0; i < characters.length; i++) {
-                temp = temp + (characters[i] + ' Hp:' + hp[i] + ' Will:' + will[i] + '\n');
+                temp = temp + ('Name:' + characters[i].name + ' Hp:' + characters[i].hp + ' Will:' + characters[i].will + '\n');
             }
             message.channel.send(temp);
         }
@@ -70,7 +66,7 @@ client.on('message', message => {
                 message.channel.send('Already running!');
             }
             if (running == false) {
-                message.channel.send('Starting up. Use !add to add your characters and !finish when you are done to start gameplay.');
+                message.channel.send('Starting up. Use ' + prefix + 'add to add your characters and ' + prefix + 'finish when you are done to start gameplay.');
                 running = true;
                 state = 'starting';
             }
@@ -84,10 +80,10 @@ client.on('message', message => {
                 message.channel.send('Good bye!');
                 running = false;
                 playerNum = 0;
-                characters = [''];
-                players = [''];
-                hp = [];
-                will = [];
+                characters = [];
+                //players = [''];
+                //hp = [];
+                //will = [];
                 roomList = [];
             }
         }
@@ -95,7 +91,14 @@ client.on('message', message => {
         if (command === 'roll') {
             message.channel.send(Math.floor((Math.random() * 6) + 1));
         }
-
+        if (command === 'test2') {
+            var temp = '';
+            for(i=0;i<=15;i++){
+                temp = emojicodes[i];
+                message.channel.send(temp);
+                temp = '';
+            }
+        }
         //test method for the maze contents
         if (command === 'test') {
             if (roomList.length >= 1) {
@@ -110,13 +113,41 @@ client.on('message', message => {
                 message.channel.send('No maze built!');
             }
         }
+        //allows for players to raw set their stats in situations where the normal system doesn't meet their needs.
+        if(command == 'set'){
+            if (args[0] == 'hp') {
+                if(Number.isInteger(parseInt(args[1]))){
+                    for (i = 0; i < playerNum; i++) {
+                        if (message.author == characters[i].player) {
+                            characters[i].hp = args[1];
+                            message.channel.send(characters[i].name + ' Hp: ' + characters[i].hp);
+                        }
+                    }
+                }
+            }
+            if (args[0] == 'will') {
+                if(Number.isInteger(parseInt(args[1]))){
+                    for (i = 0; i < playerNum; i++) {
+                        if (message.author == characters[i].player) {
+                            characters[i].will = args[1];
+                            message.channel.send(characters[i].name + ' Will: ' + characters[i].will);
+                        }
+                    }
+                }
+            }
+        }
         //Visuallizes the maze for the players. Takes 2 modifying arguments, debug and events. Uses the visualizerHelper function
-        if (command === 'visualize') {
+        if (command === 'map') {
             if (roomList.length >= 1) {
                 var temp = '';
                 var count = 0;
                 if (args[0] == 'debug') {
                     for (i = 1; i <= mazeHeight; i++) {
+                        if(temp.length >= (2000 - (mazeWidth * 90)))
+                        {
+                            message.channel.send(temp);
+                            temp = '';
+                        }
                         for (j = 1; j <= mazeWidth; j++) {
                             temp = visualizerHelper(count, temp, 'type');
                             count++;
@@ -147,7 +178,7 @@ client.on('message', message => {
                                 temp = visualizerHelper(count, temp, 'type');
                             }
                             else {
-                                temp = (temp + '?? ');
+                                temp = (temp + emojicodes[0]);
                             }
                             count++;
                         }
@@ -313,26 +344,42 @@ client.on('message', message => {
             }
         }
     }
+    if (command === 'lateadd') {
+        if (!args.length) {
+            message.channel.send(`You didn't provide any arguments, ${message.author}! Proper format is ` + prefix + `lateadd name hp will`);
+        }
+        else if (args.length > 3) {
+            message.channel.send(`Too many arguments, ${message.author}! Proper format is ` + prefix + `lateadd name hp will`);
+        }
+        else {
+            if (Number.isInteger(parseInt(args[1])) && Number.isInteger(parseInt(args[2]))) {
+                characters.push({id: playerNum, name: args[0], hp:  parseInt(args[1]), will: parseInt(args[2]), player: message.author, inventory: ''})
+                playerNum++;
+                message.channel.send(args[0] + ' added with Hp:' + args[1] + ' and will:' + args[2]);
+            }
+            else {
+                message.channel.send('Character addition failed. Proper format is ' + prefix + 'lateadd [name] [hp] [will]. you wrote ' + prefix + 'lateadd '
+                    + args[0] + ' ' + args[1] + ' ' + args[2]);
+            }
+        }
+    }
     //this block of logic is for processing commands in the "Starting" state
     else if (state == 'starting') {
         if (command === 'add') {
             if (!args.length) {
-                message.channel.send(`You didn't provide any arguments, ${message.author}! Proper format is !add name hp will`);
+                message.channel.send(`You didn't provide any arguments, ${message.author}! Proper format is ` + prefix + `add name hp will`);
             }
             else if (args.length > 3) {
-                message.channel.send(`Too many arguments, ${message.author}! Proper format is !add name hp will`);
+                message.channel.send(`Too many arguments, ${message.author}! Proper format is ` + prefix + `add name hp will`);
             }
             else {
                 if (Number.isInteger(parseInt(args[1])) && Number.isInteger(parseInt(args[2]))) {
-                    characters[playerNum] = args[0];
-                    players[playerNum] = message.author;
-                    hp[playerNum] = parseInt(args[1]);
-                    will[playerNum] = parseInt(args[2]);
+                    characters.push({id: playerNum, name: args[0], hp:  parseInt(args[1]), will: parseInt(args[2]), player: message.author, inventory: ''})
                     playerNum++;
                     message.channel.send(args[0] + ' added with Hp:' + args[1] + ' and will:' + args[2]);
                 }
                 else {
-                    message.channel.send('Character addition failed. Proper format is !add [name] [hp] [will]. you wrote !add '
+                    message.channel.send('Character addition failed. Proper format is ' + prefix + 'add [name] [hp] [will]. you wrote ' + prefix + 'add '
                         + args[0] + ' ' + args[1] + ' ' + args[2]);
                 }
             }
@@ -347,7 +394,7 @@ client.on('message', message => {
                         var temp = Math.floor(Math.random() * roomRNG.length);
                         roomList.push({
                             height: i, width: j, type: roomRNG[temp],
-                            event: Math.floor((Math.random() * 30) + 1), visited: false, entrance: false, exit: false
+                            event: Math.floor((Math.random() * 20) + 1), visited: false, entrance: false, exit: false
                         });
                     }
                 }
@@ -382,6 +429,21 @@ client.on('message', message => {
                 roomList[exitRoom].visited = true;
 
                 message.channel.send('Done with setup');
+                var temp = '';
+                var count = 0;
+                for (i = 1; i <= mazeHeight; i++) {
+                    for (j = 1; j <= mazeWidth; j++) {
+                        if (roomList[count].visited == true) {
+                            temp = visualizerHelper(count, temp, 'type');
+                        }
+                        else {
+                            temp = (temp + emojicodes[0]);
+                        }
+                        count++;
+                    }
+                    temp = (temp + '\n');
+                }
+                message.channel.send(temp);
 
                 //debug information
                 //message.channel.send('Starting room is x: ' + roomList[entranceRoom ].width + ' y: ' + roomList[entranceRoom ].height);
@@ -395,25 +457,28 @@ client.on('message', message => {
     }
     else if (state == 'event') {
         if (command == 'success') {
-            message.channel.send('you did it');
+            message.channel.send(eventDescriptions[roomList[currentRoom].event.win]);
             state = 'open';
         }
         else if (command == 'failure') {
+            var temp = false;
             for (i = 0; i < playerNum; i++) {
-                if (message.author == players[i]) {
-                    hp[i] = (hp[i] - eventDescriptions[roomList[currentRoom].event].hp);
-                    will[i] = (will[i] - eventDescriptions[roomList[currentRoom].event].will);
-                    if (hp[i] <= 0 || will[i] <= 0) {
-                        message.channel.send(characters[i] + ` has succumbed, ${message.author}!` + '\nhp: ' + hp[i] + '\nwill: ' + will[i]);
-                        //could just remove character
+                if (message.author == characters[i].player) {
+                    temp = true;
+                    characters[i].hp = (characters[i].hp - eventDescriptions[roomList[currentRoom].event].hp);
+                    characters[i].will = (characters[i].will - eventDescriptions[roomList[currentRoom].event].will);
+                    if (characters[i].hp <= 0 || characters[i].will <= 0) {
+                        message.channel.send(eventDescriptions[roomList[currentRoom].event].loss + '\n ' 
+                        + characters[i].name + ` has succumbed, ${message.author}!` + '\nhp: ' + characters[i].hp + '\nwill: ' + characters[i].will);
+                        //could just remove character?
                     }
                     else {
-                        message.channel.send(characters[i] + '\nhp: ' + hp[i] + '\nwill: ' + will[i]);
+                        message.channel.send(characters[i].name + '\nhp: ' + characters[i].hp + '\nwill: ' + characters[i].will);
                     }
                 }
-                else{
-                    message.channel.send('Is somebody messing around?');
-                }
+            }
+            if(temp == false){
+                message.channel.send('Is somebody messing around?');
             }
         }
         else if (command == 'ignore') {
@@ -431,10 +496,10 @@ function applyEvent(eventNumber) {
     state = 'event';
     var text = 'error';
     if (eventDescriptions[eventNumber].type == 1) {
-        text = ('A hazard blocks your path. ' + eventDescriptions[eventNumber].description + '\nIts challenge rating is ' + eventDescriptions[eventNumber].check + '\nuse !success, !failure, or !ignore to continue gameplay.');
+        text = ('A hazard blocks your path.\n' + eventDescriptions[eventNumber].description + '\nIts challenge rating is ' + eventDescriptions[eventNumber].check + '\nuse ' + prefix + 'success, ' + prefix + 'failure, or ' + prefix + 'ignore to continue gameplay.');
     }
     else if (eventDescriptions[eventNumber].type == 2) {
-        text = ('its a trap!\nIts challenge rating is ' + eventDescriptions[eventNumber].check + '\nuse !success or !failure to continue gameplay.');
+        text = ('its a trap!\n' + eventDescriptions[eventNumber].description + '\nThe challenge rating is ' + eventDescriptions[eventNumber].check + '\nuse ' + prefix + 'success or ' + prefix + 'failure to continue gameplay.');
         eventDescriptions[eventNumber].type = 'other';
     }
     else if (eventDescriptions[eventNumber].type == 3) {
@@ -453,28 +518,16 @@ function applyEvent(eventNumber) {
 //This is a modular helper function for the visualizers
 function visualizerHelper(count, temp, display) {
     if (display == 'type') {
-        if (roomList[count].type < 10) {
-            if (count == currentRoom) {
-                temp = (temp + ' **' + roomList[count].type + '** ');
-            }
-            else {
-                temp = (temp + ' ' + roomList[count].type + ' ');
-            }
+        if (count == entranceRoom) {
+            temp = temp + emojicodes[16];
         }
-        else {
-            if (count == currentRoom) {
-                temp = (temp + '**' + roomList[count].type + '** ');
-            }
-            else if (count == entranceRoom) {
-                temp = (temp + '*' + roomList[count].type + '* ');
-            }
-            else if (count == exitRoom) {
-                temp = (temp + '__' + roomList[count].type + '__ ');
-            }
-            else {
-                temp = (temp + roomList[count].type + ' ');
-            }
+        else if (count == exitRoom) {
+            temp = temp + emojicodes[17];
         }
+        else{
+            temp = temp + emojicodes[roomList[count].type];
+        }
+        
         return temp;
     }
     else {
@@ -526,26 +579,40 @@ typeDescriptions[15].description = 'a crossroads in every direction';
 
 //These are the event descriptions and their effects. Types are 1 = hazard, 2 = trap, 3 = item, and 0 = other
 for (var i = 0; i <= 31; i++) {
-    eventDescriptions.push({ type: 1, description: '', hp: i, will: i, check: i });
+    eventDescriptions.push({ type: 1, description: '', damage: '', loss: '', win: '', hp: i, will: i, check: i });
 }
 eventDescriptions[0].type = 0;
 eventDescriptions[0].description = 'the entrence or exit of the maze';
 eventDescriptions[1].type = 2;
 eventDescriptions[1].description = 'a test case for traps.';
+eventDescriptions[1].damage = 'test case traps damage';
+eventDescriptions[1].loss = 'test case traps loss';
+eventDescriptions[1].win = 'test case traps win';
 eventDescriptions[1].hp = 5;
 eventDescriptions[1].will = 5;
 eventDescriptions[1].check = 5;
 eventDescriptions[2].type = 1;
 eventDescriptions[2].description = 'a test case for hazards.';
+eventDescriptions[2].damage = 'test case hazards damage';
+eventDescriptions[2].loss = 'test case hazards loss';
+eventDescriptions[2].win = 'test case hazards win';
 eventDescriptions[2].hp = 5;
 eventDescriptions[2].will = 5;
 eventDescriptions[2].check = 5;
 eventDescriptions[3].type = 3;
 eventDescriptions[3].description = 'a test case for items.';
+eventDescriptions[3].damage = 'test case items damage';
+eventDescriptions[3].loss = 'test case items loss';
+eventDescriptions[3].win = 'test case items win';
 eventDescriptions[3].hp = 5;
 eventDescriptions[3].will = 5;
 eventDescriptions[3].check = 5;
 
+//var emojicodes = ['<:LABfow:746192126215454760>', 'error1', 'error2', 'error3', 'error4', 'error5', 'error6', 'error7', 'error8', '<:LAB9:746192126282563594>', '<:LAB10:746192126018322444>', '<:LAB11:746192126139957278>',
+ //'<:LAB12:746192125934305331>', '<:LAB13:746192125984505868>', '<:LAB14:746192126160797806>', '<:LAB15:746192126261592064>', '<:LABenter:746192125917659137>', '<:LABexit:746192126114529301>']; //the house
+
+ var emojicodes = ['<:LABfow:741876829148938261>', 'error1', 'error2', 'error3', 'error4', 'error5', 'error6', 'error7', 'error8', '<:LAB9:741876828612067399>', '<:LAB10:741876828716793873>', '<:LAB11:741876829153132584>',
+ '<:LAB12:741876829173841990>', '<:LAB13:741876829031497747>', '<:LAB14:741876829044080660>', '<:LAB15:741876829060857987>', '<:LABenter:744657747626426401>', '<:LABexit:744657795281977464>']; //my server
 
 //this is the hidden bot token. 
 client.login(token);
