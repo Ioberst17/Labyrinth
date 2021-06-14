@@ -2,7 +2,7 @@
 //Version 1.0
 
 
-const token = 'NzMyMzAxMzcyNzk1NTE5MDI2.Xwym1Q.98GPgkkEmv4jEWIdiI3IeNSizQ0'; //HIDE THIS BEFORE PUBLIC POSTING
+const token = ''; //HIDE THIS BEFORE PUBLIC POSTING
 
 
 const Discord = require('discord.js');
