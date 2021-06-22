@@ -2,7 +2,13 @@
 //Version 1.0
 
 
-const token = ''; //HIDE THIS BEFORE PUBLIC POSTING
+
+var tokenimport = require("./Token");
+const token = tokenimport;
+var imports = require("./events");
+console.log(tokenimport);
+console.log(imports.arr);
+
 
 
 const Discord = require('discord.js');
@@ -23,7 +29,10 @@ var mazeHeight = 7;
 var roomList = [];
 var typeDescriptions = [];
 var eventDescriptions = [];
-var roomRNG = [9, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 15];
+//Here is where the imports are done for 
+eventDescriptions = imports.arr[0];
+typeDescriptions = imports.arr[1];
+var roomRNG = [9, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15];
 
 client.once('ready', () => {
     console.log('Ready!');
@@ -45,6 +54,20 @@ client.on('message', message => {
             ' ' + prefix + 'north or up or n, east or right or e, south or down or s, west or left or w all to navigate the maze. ' + prefix + 'start, While starting: ' + prefix + 'finish, ' + prefix + 'add. ' +
             'during events: ' + prefix + 'success, ' + prefix + 'failure, ' + prefix + 'ignore, ' + prefix + 'done');
 
+    }
+    //ends the current game, whipes the setup. should probably make this a function. 
+    if (command === 'end') {
+        if (running == false) {
+            message.channel.send('No game running!');
+        }
+        if (running == true) {
+            message.channel.send('Are you sure? Enter ' + prefix + 'end again to close.');
+            state = 'ending';
+        }
+    }
+    //dice roller. currently rolls 1-20, currently utility fluff.
+    if (command === 'roll') {
+        message.channel.send(Math.floor((Math.random() * 20) + 1));
     }
     //Assistant function to allow user to check the current state and game objects
     if (command === 'summary') {
@@ -83,25 +106,10 @@ client.on('message', message => {
                 message.channel.send('Already running!');
             }
             if (running == false) {
-                message.channel.send('Starting up. Use ' + prefix + 'add to add your characters and ' + prefix + 'finish when you are done to start gameplay.');
+                message.channel.send('Starting up. Use ' + prefix + 'add to add your characters and ' + prefix + 'finish when you are done to start gameplay. The game is currently ballanced for 100 Hp and Will. An example of correct character entry would be  ' + prefix + 'add MyName 100 100');
                 running = true;
                 state = 'starting';
             }
-        }
-        //ends the current game, whipes the setup. should probably make this a function. 
-        if (command === 'end') {
-            if (running == false) {
-                message.channel.send('No game running!');
-            }
-            if (running == true) {
-                message.channel.send('Are you sure? Enter ' + prefix + 'end again to close.');
-                state = 'ending';
-            }
-        }
-
-        //dice roller. currently rolls 1-6, currently utility fluff.
-        if (command === 'roll') {
-            message.channel.send(Math.floor((Math.random() * 6) + 1));
         }
         if (command === 'test2') {
             var temp = '';
@@ -166,7 +174,7 @@ client.on('message', message => {
                     visionFunction(message, args, currentRoom);
 
                     if (roomList[currentRoom].visited != true || eventDescriptions[roomList[currentRoom].event].type == 1) {
-                        message.channel.send(applyEvent(roomList[currentRoom].event));
+                        message.channel.send(applyEvent(message, args, roomList[currentRoom].event));
                     }
                     roomList[currentRoom].visited = true;
                     if (roomList[currentRoom].exit == true) {
@@ -179,14 +187,14 @@ client.on('message', message => {
                 message.channel.send('No maze built!');
             }
         }
-        if (command === 'east' || command === 'left' || command === 'e') {
+        if (command === 'east' || command === 'right' || command === 'e') {
             if (roomList.length >= 1) {
                 if (traversalFunction(message, args, 'east', currentRoom, true)) {
                     currentRoom = currentRoom + 1;
                     message.channel.send('you went east and arrived in ' + typeDescriptions[roomList[currentRoom].type].description);
                     visionFunction(message, args, currentRoom);
                     if (roomList[currentRoom].visited != true || eventDescriptions[roomList[currentRoom].event].type == 1) {
-                        message.channel.send(applyEvent(roomList[currentRoom].event));
+                        message.channel.send(applyEvent(message, args, roomList[currentRoom].event));
                     }
                     roomList[currentRoom].visited = true;
 
@@ -208,7 +216,7 @@ client.on('message', message => {
                     message.channel.send('you went South and arrived in ' + typeDescriptions[roomList[currentRoom].type].description);
                     visionFunction(message, args, currentRoom);
                     if (roomList[currentRoom].visited != true || eventDescriptions[roomList[currentRoom].event].type == 1) {
-                        message.channel.send(applyEvent(roomList[currentRoom].event));
+                        message.channel.send(applyEvent(message, args, roomList[currentRoom].event));
                     }
                     roomList[currentRoom].visited = true;
 
@@ -229,7 +237,7 @@ client.on('message', message => {
                     message.channel.send('you went west and arrived in ' + typeDescriptions[roomList[currentRoom].type].description);
                     visionFunction(message, args, currentRoom);
                     if (roomList[currentRoom].visited != true || eventDescriptions[roomList[currentRoom].event].type == 1) {
-                        message.channel.send(applyEvent(roomList[currentRoom].event));
+                        message.channel.send(applyEvent(message, args, roomList[currentRoom].event));
                     }
                     roomList[currentRoom].visited = true;
 
@@ -302,15 +310,14 @@ client.on('message', message => {
             } else {
                 message.channel.send('Need at least one player.');
             }
-            console.log(currentRoom);
         }   
     }//This block is for handling events
     else if (state == 'event') {
-        if (command == 'success') {
+        if (command == 'success' || command == 'win') {
             message.channel.send(`\n` + eventDescriptions[roomList[currentRoom].event].win);
             state = 'open';
             mapFunction(message, args);
-        } else if (command == 'failure') {
+        } else if (command == 'failure' || command == 'f' || command == 'lose') {
             var temp = false;
             for (i = 0; i < playerNum; i++) {
                 if (message.author == characters[i].player) {
@@ -319,10 +326,11 @@ client.on('message', message => {
                     characters[i].will = (characters[i].will - eventDescriptions[roomList[currentRoom].event].will);
                     if (characters[i].hp <= 0 || characters[i].will <= 0) {
                         message.channel.send(eventDescriptions[roomList[currentRoom].event].loss + '\n ' +
-                            characters[i].name + ` has succumbed, ${message.author}!` + '\nhp: ' + characters[i].hp + '\nwill: ' + characters[i].will);
-                        //could just remove character? leaving it now for player flexibility.
+                            characters[i].name + ` has fallen, ${message.author}!` + '\nhp: ' + characters[i].hp + '\nwill: ' + characters[i].will);
+                        //could just remove character? leaving it right now for player flexibility.
                     } else {
-                        message.channel.send(characters[i].name + '\nhp: ' + characters[i].hp + '\nwill: ' + characters[i].will);
+                        message.channel.send(eventDescriptions[roomList[currentRoom].event].damage + '\n' + characters[i].name + '\nhp: ' + characters[i].hp + '\nwill: ' + characters[i].will);
+                        
                     }
                 }
             }
@@ -341,7 +349,7 @@ client.on('message', message => {
     }
 });
 //this is a modular function to make applying the events more concise
-function applyEvent(eventNumber) {
+function applyEvent(message, args, eventNumber) {
     state = 'event';
     var text = 'error';
     if (eventDescriptions[eventNumber].type == 1) {
@@ -358,6 +366,7 @@ function applyEvent(eventNumber) {
         //do nothing, room is likely empty or otherwise disabled. 
         text = 'an empty room';
         state = 'open';
+        mapFunction(message, args);
     }
     return text;
 }
@@ -371,17 +380,23 @@ function mazeBuilder(message, args) {
         for (i = 1; i <= mazeHeight; i++) {
             for (j = 1; j <= mazeWidth; j++) {
                 //uses the roomRNG to adjust maze difficulty and selection type. 
+                var roller = Math.floor((Math.random() * 2) + 1);
+                //console.log(roller);
                 var temp = Math.floor(Math.random() * roomRNG.length);
                 roomList.push({
                     height: i,
                     width: j,
                     type: roomRNG[temp],
-                    event: Math.floor((Math.random() * 20) + 1),
+                    event: Math.floor((Math.random() * (eventDescriptions.length - 2)) + 2),
                     revealed: false,
                     visited: false,
                     entrance: false,
                     exit: false
                 });
+                if(roller != 2){
+                    //console.log(roomList[(roomList.length)-1].event);
+                    roomList[(roomList.length)-1].event = 1;
+                }
             }
         }
         //this sets up the entrance room
@@ -414,14 +429,6 @@ function mazeBuilder(message, args) {
 
         //An algorithm for testing if the maze is solvable. Makes use of the traversal fuction to 'navigate' the maze.
         for (n = 0; n < checked.length; n++) {
-            console.log('n equals ' + n);
-            //console.log('checked[n] equals ' + checked[n]);
-            //console.log('currentRoom equals ' + currentRoom);
-            //console.log('path[checked[n]] equals ' + path[checked[n]]);
-            //console.log('path[checked[n] - mazeWidth] equals ' + path[checked[n] - mazeWidth]);
-            //console.log('path[checked[n] + mazeWidth] equals ' + path[checked[n] + mazeWidth]);
-            //console.log('path[checked[n] + 1] equals ' + path[checked[n] + 1]);
-            //console.log('path[checked[n] - 1] equals ' + path[checked[n] - 1] + '\n');
 
             if (traversalFunction(message, args, 'north', checked[n], false)) {
                 if (roomList[checked[n] - mazeWidth].exit == true) {
@@ -741,78 +748,20 @@ function visualizerHelper(count, temp, display) {
     }
 }
 
-//These are the room type descriptions.
-for (var i = 0; i <= 15; i++) {
-    typeDescriptions.push({
-        type: i,
-        description: ''
-    });
-}
-typeDescriptions[1].description = 'a dead end from the west';
-typeDescriptions[2].description = 'a dead end from the north';
-typeDescriptions[3].description = 'a dead end from the east';
-typeDescriptions[4].description = 'a dead end from the south';
-typeDescriptions[5].description = 'a corner bending north and east';
-typeDescriptions[6].description = 'a corner bending north and west';
-typeDescriptions[7].description = 'a corner bending south and east';
-typeDescriptions[8].description = 'a corner bending south and west';
-typeDescriptions[9].description = 'a straight passage running east to west';
-typeDescriptions[10].description = 'a straight passage running north to south';
-typeDescriptions[11].description = 'a fork running east, south and west';
-typeDescriptions[12].description = 'a fork running north, south and west';
-typeDescriptions[13].description = 'a fork running north, east and west';
-typeDescriptions[14].description = 'a fork running north, east and south';
-typeDescriptions[15].description = 'a crossroads in every direction';
+//Her
 
 //These are the event descriptions and their effects. Types are 1 = hazard, 2 = trap, 3 = item, and 0 = other
-for (var i = 0; i <= 31; i++) {
-    eventDescriptions.push({
-        type: 1,
-        description: 'Test',
-        damage: 'ow',
-        loss: 'lose',
-        win: 'won',
-        hp: i,
-        will: i,
-        check: i
-    });
-}
-eventDescriptions[0].type = 0;
-eventDescriptions[0].description = 'the entrence or exit of the maze';
-eventDescriptions[1].type = 2;
-eventDescriptions[1].description = 'a test case for traps.';
-eventDescriptions[1].damage = 'test case traps damage';
-eventDescriptions[1].loss = 'test case traps loss';
-eventDescriptions[1].win = 'test case traps win';
-eventDescriptions[1].hp = 5;
-eventDescriptions[1].will = 5;
-eventDescriptions[1].check = 5;
-eventDescriptions[2].type = 1;
-eventDescriptions[2].description = 'a test case for hazards.';
-eventDescriptions[2].damage = 'test case hazards damage';
-eventDescriptions[2].loss = 'test case hazards loss';
-eventDescriptions[2].win = 'test case hazards win';
-eventDescriptions[2].hp = 5;
-eventDescriptions[2].will = 5;
-eventDescriptions[2].check = 5;
-eventDescriptions[3].type = 3;
-eventDescriptions[3].description = 'a test case for items.';
-eventDescriptions[3].damage = 'test case items damage';
-eventDescriptions[3].loss = 'test case items loss';
-eventDescriptions[3].win = 'test case items win';
-eventDescriptions[3].hp = 5;
-eventDescriptions[3].will = 5;
-eventDescriptions[3].check = 5;
-
-//var emojicodes = ['<:LABfow:746192126215454760>', 'error1', 'error2', 'error3', 'error4', 'error5', 'error6', 'error7', 'error8', '<:LAB9:746192126282563594>', '<:LAB10:746192126018322444>', '<:LAB11:746192126139957278>',
-//'<:LAB12:746192125934305331>', '<:LAB13:746192125984505868>', '<:LAB14:746192126160797806>', '<:LAB15:746192126261592064>', '<:LABenter:746192125917659137>', '<:LABexit:746192126114529301>',
-//'<:grid1:853800532136165377>', '<:grid2:853800532216119350>', '<:grid3:853800532035895337>', '<:grid4:853800532383629322>']; //the house
 
 
-var emojicodes = ['<:LABfow:741876829148938261>', 'error1', 'error2', 'error3', 'error4', 'error5', 'error6', 'error7', 'error8', '<:LAB9:741876828612067399>', '<:LAB10:741876828716793873>', '<:LAB11:741876829153132584>',
+var emojicodes = ['<:LABfow:746192126215454760>', 'error1', 'error2', 'error3', 'error4', 'error5', 'error6', 'error7', 'error8', '<:LAB9:746192126282563594>', '<:LAB10:746192126018322444>', '<:LAB11:746192126139957278>',
+'<:LAB12:746192125934305331>', '<:LAB13:746192125984505868>', '<:LAB14:746192126160797806>', '<:LAB15:746192126261592064>', '<:LABenter:746192125917659137>', '<:LABexit:746192126114529301>',
+'<:grid1:853800532136165377>', '<:grid2:853800532216119350>', '<:grid3:853800532035895337>', '<:grid4:853800532383629322>']; //the house
+
+
+/* var emojicodes = ['<:LABfow:741876829148938261>', 'error1', 'error2', 'error3', 'error4', 'error5', 'error6', 'error7', 'error8', '<:LAB9:741876828612067399>', '<:LAB10:741876828716793873>', '<:LAB11:741876829153132584>',
     '<:LAB12:741876829173841990>', '<:LAB13:741876829031497747>', '<:LAB14:741876829044080660>', '<:LAB15:741876829060857987>', '<:LABenter:744657747626426401>', '<:LABexit:744657795281977464>', 
     '<:grid1:853760808618295307>', '<:grid2:853760808517632000>', '<:grid3:853760808425226260>', '<:grid4:853760808491548673>', 
-]; //my server
+]; //my server */
 
 //this is the hidden bot token. 
 client.login(token);
